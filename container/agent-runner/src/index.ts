@@ -578,11 +578,31 @@ async function main(): Promise<void> {
 
   // Query loop: run query → wait for IPC message → run new query → repeat
   let resumeAt: string | undefined;
+  let sessionResumeFailed = false; // track if we already fell back to fresh session
   try {
     while (true) {
       log(`Starting query (session: ${sessionId || 'new'}, resumeAt: ${resumeAt || 'latest'})...`);
 
-      const queryResult = await runQuery(prompt, sessionId, mcpServerPath, containerInput, sdkEnv, resumeAt);
+      let queryResult: Awaited<ReturnType<typeof runQuery>>;
+      try {
+        queryResult = await runQuery(prompt, sessionId, mcpServerPath, containerInput, sdkEnv, resumeAt);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // If session resume failed and we haven't retried yet, fall back to a fresh session
+        if (!sessionResumeFailed && sessionId && (
+          msg.includes('No conversation found') ||
+          msg.includes('error_during_execution') ||
+          msg.includes('invalid session') ||
+          msg.includes('session not found')
+        )) {
+          log(`Session resume failed for ${sessionId} (${msg.slice(0, 120)}), retrying with fresh session`);
+          sessionId = undefined;
+          resumeAt = undefined;
+          sessionResumeFailed = true;
+          continue;
+        }
+        throw err;
+      }
       if (queryResult.newSessionId) {
         sessionId = queryResult.newSessionId;
       }
