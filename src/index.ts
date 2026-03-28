@@ -180,6 +180,23 @@ function registerGroup(jid: string, group: RegisteredGroup): void {
     }
   }
 
+  if (group.promptSuffix) {
+    const existing = fs.existsSync(groupMdFile)
+      ? fs.readFileSync(groupMdFile, 'utf-8')
+      : '';
+    const marker = '<!-- promptSuffix -->';
+    const block = `\n\n${marker}\n${group.promptSuffix}\n${marker}`;
+    if (existing.includes(marker)) {
+      fs.writeFileSync(
+        groupMdFile,
+        existing.replace(new RegExp(`\n\n${marker}[\\s\\S]*?${marker}`), block),
+      );
+    } else {
+      fs.appendFileSync(groupMdFile, block);
+    }
+    logger.info({ folder: group.folder }, 'Wrote promptSuffix to CLAUDE.md');
+  }
+
   // Ensure a corresponding OneCLI agent exists (best-effort, non-blocking)
   ensureOneCLIAgent(jid, group);
 
