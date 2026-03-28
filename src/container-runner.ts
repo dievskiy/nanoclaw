@@ -221,9 +221,29 @@ function buildVolumeMounts(
     readonly: false,
   });
 
-  // Default shared read-only mount: /data available to all agents at /workspace/extra/data
+  // Shared /data: all agents get read-only access at /workspace/extra/data,
+  // but each group gets read-write access to its own subdirectory /data/{group.folder}.
+  // The more-specific rw mount shadows the parent ro mount for that path.
   if (fs.existsSync('/data')) {
-    mounts.push({ hostPath: '/data', containerPath: '/workspace/extra/data', readonly: true });
+    mounts.push({
+      hostPath: '/data',
+      containerPath: '/workspace/extra/data',
+      readonly: true,
+    });
+
+    // Ensure per-group directory exists and mount it read-write at /workspace/data.
+    // Note: Docker does not allow a child bind mount to override a parent ro mount,
+    // so mounting within /workspace/extra/data/ as rw is not possible. /workspace/data
+    // is a separate mount path that is fully writable.
+    const groupDataDir = path.join('/data', group.folder);
+    const prevUmask = process.umask(0);
+    fs.mkdirSync(groupDataDir, { recursive: true, mode: 0o777 });
+    process.umask(prevUmask);
+    mounts.push({
+      hostPath: groupDataDir,
+      containerPath: '/workspace/data',
+      readonly: false,
+    });
   }
 
   // Additional mounts validated against external allowlist (tamper-proof from containers)

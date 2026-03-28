@@ -451,13 +451,19 @@ async function runQuery(
 
     if (message.type === 'result') {
       resultCount++;
+      const subtype = (message as { subtype?: string }).subtype;
       const textResult = 'result' in message ? (message as { result?: string }).result : null;
-      log(`Result #${resultCount}: subtype=${message.subtype}${textResult ? ` text=${textResult.slice(0, 200)}` : ''}`);
-      writeOutput({
-        status: 'success',
-        result: textResult || null,
-        newSessionId
-      });
+      log(`Result #${resultCount}: subtype=${subtype}${textResult ? ` text=${textResult.slice(0, 200)}` : ''}`);
+      // Skip output for error_during_execution — the SDK will throw after this
+      // and the outer loop will retry with a fresh session. Emitting a marker
+      // here would prematurely trigger the host's streaming callback.
+      if (subtype !== 'error_during_execution') {
+        writeOutput({
+          status: 'success',
+          result: textResult || null,
+          newSessionId
+        });
+      }
     }
   }
 
@@ -535,6 +541,8 @@ async function main(): Promise<void> {
   // Credentials are injected by the host's credential proxy via ANTHROPIC_BASE_URL.
   // No real secrets exist in the container environment.
   const sdkEnv: Record<string, string | undefined> = { ...process.env };
+  sdkEnv.NANOCLAW_GROUP_FOLDER = containerInput.groupFolder;
+  sdkEnv.NANOCLAW_DATA_DIR = `/workspace/extra/data/${containerInput.groupFolder}`;
 
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const mcpServerPath = path.join(__dirname, 'ipc-mcp-stdio.js');
