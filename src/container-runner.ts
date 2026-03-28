@@ -221,6 +221,11 @@ function buildVolumeMounts(
     readonly: false,
   });
 
+  // Default shared read-only mount: /data available to all agents at /workspace/extra/data
+  if (fs.existsSync('/data')) {
+    mounts.push({ hostPath: '/data', containerPath: '/workspace/extra/data', readonly: true });
+  }
+
   // Additional mounts validated against external allowlist (tamper-proof from containers)
   if (group.containerConfig?.additionalMounts) {
     const validatedMounts = validateAdditionalMounts(
