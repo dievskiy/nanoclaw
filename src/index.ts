@@ -293,7 +293,9 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
       logger.info({ group: group.name }, `Agent output: ${raw.length} chars`);
       if (channel.sendRaw) {
         await channel.sendRaw(chatJid, raw);
-        const stripped = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
+        const stripped = raw
+          .replace(/<internal>[\s\S]*?<\/internal>/g, '')
+          .trim();
         if (stripped) outputSentToUser = true;
       } else {
         // Strip <internal>...</internal> blocks — agent uses these for internal reasoning
