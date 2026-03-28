@@ -290,18 +290,27 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
         typeof result.result === 'string'
           ? result.result
           : JSON.stringify(result.result);
-      // Strip <internal>...</internal> blocks — agent uses these for internal reasoning
-      const text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
       logger.info({ group: group.name }, `Agent output: ${raw.length} chars`);
-      if (text) {
-        await channel.sendMessage(chatJid, text);
-        outputSentToUser = true;
+      if (channel.sendRaw) {
+        await channel.sendRaw(chatJid, raw);
+        const stripped = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
+        if (stripped) outputSentToUser = true;
+      } else {
+        // Strip <internal>...</internal> blocks — agent uses these for internal reasoning
+        const text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
+        if (text) {
+          await channel.sendMessage(chatJid, text);
+          outputSentToUser = true;
+        }
       }
       // Only reset idle timer on actual results, not session-update markers (result: null)
       resetIdleTimer();
     }
 
     if (result.status === 'success') {
+      // Flush buffered response for long-poll channels (e.g. HTTP) after each
+      // prompt completion, not just when the container exits.
+      await channel.agentDone?.(chatJid);
       queue.notifyIdle(chatJid);
     }
 
@@ -311,6 +320,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   });
 
   await channel.setTyping?.(chatJid, false);
+  await channel.agentDone?.(chatJid);
   if (idleTimer) clearTimeout(idleTimer);
 
   if (output === 'error' || hadError) {
@@ -652,11 +662,15 @@ async function main(): Promise<void> {
       isGroup?: boolean,
     ) => storeChatMetadata(chatJid, timestamp, name, channel, isGroup),
     registeredGroups: () => registeredGroups,
+    registerGroup,
   };
 
   // Create and connect all registered channels.
   // Each channel self-registers via the barrel import above.
   // Factories return null when credentials are missing, so unconfigured channels are skipped.
+  // Connections race against a timeout so one slow/unreachable channel
+  // cannot block the entire system from starting.
+  const CHANNEL_CONNECT_TIMEOUT = 15_000;
   for (const channelName of getRegisteredChannelNames()) {
     const factory = getChannelFactory(channelName)!;
     const channel = factory(channelOpts);
@@ -668,7 +682,27 @@ async function main(): Promise<void> {
       continue;
     }
     channels.push(channel);
-    await channel.connect();
+    try {
+      await Promise.race([
+        channel.connect(),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `connect timed out after ${CHANNEL_CONNECT_TIMEOUT}ms`,
+                ),
+              ),
+            CHANNEL_CONNECT_TIMEOUT,
+          ),
+        ),
+      ]);
+    } catch (err) {
+      logger.warn(
+        { channel: channelName, err: String(err) },
+        'Channel connect failed/timed out — it will keep retrying in the background',
+      );
+    }
   }
   if (channels.length === 0) {
     logger.fatal('No channels connected');

@@ -88,10 +88,16 @@ export interface Channel {
   isConnected(): boolean;
   ownsJid(jid: string): boolean;
   disconnect(): Promise<void>;
+  // Optional: receives raw agent output before <internal> stripping.
+  // Channels that need to inspect <internal> blocks implement this instead of sendMessage.
+  sendRaw?(jid: string, raw: string): Promise<void>;
   // Optional: typing indicator. Channels that support it implement it.
   setTyping?(jid: string, isTyping: boolean): Promise<void>;
   // Optional: sync group/chat names from the platform.
   syncGroups?(force: boolean): Promise<void>;
+  // Optional: called after the agent finishes processing for a JID.
+  // Channels that buffer responses (e.g. HTTP long-poll) use this to flush.
+  agentDone?(jid: string): Promise<void>;
 }
 
 // Callback type that channels use to deliver inbound messages
