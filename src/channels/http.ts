@@ -8,6 +8,7 @@ import { Channel, NewMessage, RegisteredGroup } from '../types.js';
 import { registerChannel, ChannelOpts } from './registry.js';
 
 const DEFAULT_PORT = 3001;
+const DEFAULT_HOST = '0.0.0.0';
 
 interface FieldUpdates {
   customer_id?: string;
@@ -71,11 +72,15 @@ export class HttpChannel implements Channel {
   private server: http.Server | null = null;
   private opts: ChannelOpts;
   private port: number;
+  private host: string;
+  private token: string | null;
   private sessions = new Map<string, SessionState>();
 
-  constructor(opts: ChannelOpts, port: number) {
+  constructor(opts: ChannelOpts, port: number, host: string, token: string | null) {
     this.opts = opts;
     this.port = port;
+    this.host = host;
+    this.token = token;
   }
 
   async connect(): Promise<void> {
@@ -89,6 +94,14 @@ export class HttpChannel implements Channel {
         return;
       }
 
+      if (this.token) {
+        const auth = req.headers['authorization'];
+        if (auth !== `Bearer ${this.token}`) {
+          res.writeHead(401).end(JSON.stringify({ error: 'Unauthorized' }));
+          return;
+        }
+      }
+
       if (req.method === 'POST' && req.url === '/message') {
         this.handleMessage(req, res);
       } else {
@@ -97,10 +110,10 @@ export class HttpChannel implements Channel {
     });
 
     await new Promise<void>((resolve, reject) => {
-      this.server!.listen(this.port, '127.0.0.1', () => {
-        logger.info({ port: this.port }, 'HTTP channel listening');
+      this.server!.listen(this.port, this.host, () => {
+        logger.info({ port: this.port, host: this.host }, 'HTTP channel listening');
         console.log(
-          `\n  HTTP channel: http://localhost:${this.port}/message\n`,
+          `\n  HTTP channel: http://${this.host}:${this.port}/message\n`,
         );
         resolve();
       });
@@ -324,9 +337,11 @@ export class HttpChannel implements Channel {
 }
 
 registerChannel('http', (opts: ChannelOpts) => {
-  const port = parseInt(
-    process.env.HTTP_CHANNEL_PORT || String(DEFAULT_PORT),
-    10,
-  );
-  return new HttpChannel(opts, port);
+  const port = parseInt(process.env.HTTP_CHANNEL_PORT || String(DEFAULT_PORT), 10);
+  const host = process.env.HTTP_CHANNEL_HOST || DEFAULT_HOST;
+  const token = process.env.HTTP_CHANNEL_TOKEN || null;
+  if (!token) {
+    logger.warn('HTTP_CHANNEL_TOKEN is not set — requests are unauthenticated');
+  }
+  return new HttpChannel(opts, port, host, token);
 });
