@@ -793,10 +793,7 @@ describe('TelegramChannel', () => {
     });
 
     it('falls back to placeholder when getFile fails', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValueOnce({ ok: false }),
-      );
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: false }));
 
       const opts = createTestOpts();
       const channel = new TelegramChannel('test-token', opts, 'sk-test-key');

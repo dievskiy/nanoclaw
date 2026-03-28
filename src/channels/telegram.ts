@@ -270,7 +270,10 @@ export class TelegramChannel implements Channel {
           );
           if (transcript) placeholder = `[Voice]: ${transcript}`;
         } catch (err) {
-          logger.debug({ err }, 'Voice transcription failed, using placeholder');
+          logger.debug(
+            { err },
+            'Voice transcription failed, using placeholder',
+          );
         }
       }
       storeNonText(ctx, placeholder);
