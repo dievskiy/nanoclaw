@@ -1,0 +1,71 @@
+[07:58:53.614] [32mINFO[39m (299174): [36mDatabase initialized[39m
+[07:58:53.616] [32mINFO[39m (299174): [36mState loaded[39m
+    [35mgroupCount[39m: 2
+[07:58:53.740] [32mINFO[39m (299174): [36mOneCLI agent ensured[39m
+    [35mjid[39m: "tg:-5181191681"
+    [35midentifier[39m: "data2-agent"
+    [35mcreated[39m: false
+[07:58:53.840] [32mINFO[39m (299174): [36mTelegram bot connected[39m
+    [35musername[39m: "nanoclaw_aalto_bot"
+    [35mid[39m: 8666723606
+
+  Telegram bot: @nanoclaw_aalto_bot
+  Send /chatid to the bot to get a chat's registration ID
+
+[07:58:53.842] [32mINFO[39m (299174): [36mScheduler loop started[39m
+[07:58:53.844] [32mINFO[39m (299174): [36mIPC watcher started (per-group namespaces)[39m
+[07:58:53.845] [32mINFO[39m (299174): [36mRecovery: found unprocessed messages[39m
+    [35mgroup[39m: "Data2 Agent"
+    [35mpendingCount[39m: 1
+[07:58:53.847] [32mINFO[39m (299174): [36mNanoClaw running (default trigger: @Andy)[39m
+[07:59:35.185] [31mERROR[39m (299174): [36mUnhandled rejection[39m
+    [35merr[39m: {
+      "type": "GrammyError",
+      "message": "Call to 'getUpdates' failed! (409: Conflict: terminated by other getUpdates request; make sure that only one bot instance is running)",
+      "stack":
+          GrammyError: Call to 'getUpdates' failed! (409: Conflict: terminated by other getUpdates request; make sure that only one bot instance is running)
+    at toGrammyError (/root/nanoclaw/node_modules/grammy/out/core/error.js:47:12)
+    at ApiClient.callApi (/root/nanoclaw/node_modules/grammy/out/core/client.js:100:48)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Bot.fetchUpdates (/root/nanoclaw/node_modules/grammy/out/bot.js:423:27)
+    at async Bot.loop (/root/nanoclaw/node_modules/grammy/out/bot.js:394:33)
+    at async Bot.start (/root/nanoclaw/node_modules/grammy/out/bot.js:315:9)
+    }
+[08:04:00.064] [32mINFO[39m (299174): [36mNew messages[39m
+    [35mcount[39m: 1
+[08:04:12.095] [32mINFO[39m (299174): [36mNew messages[39m
+    [35mcount[39m: 1
+[08:04:12.139] [32mINFO[39m (299174): [36mProcessing messages[39m
+    [35mgroup[39m: "NanoClaw Group"
+    [35mmessageCount[39m: 1
+[08:04:12.269] [32mINFO[39m (299174): [36mOneCLI gateway config applied[39m
+    [35mcontainerName[39m: "nanoclaw-telegram-main-1774685052253"
+[08:04:12.270] [32mINFO[39m (299174): [36mSpawning container agent[39m
+    [35mgroup[39m: "NanoClaw Group"
+    [35mcontainerName[39m: "nanoclaw-telegram-main-1774685052253"
+    [35mmountCount[39m: 6
+    [35misMain[39m: true
+[08:04:20.409] [32mINFO[39m (299174): [36mAgent output: 33 chars[39m
+    [35mgroup[39m: "NanoClaw Group"
+[08:04:20.522] [32mINFO[39m (299174): [36mTelegram message sent[39m
+    [35mjid[39m: "tg:-5223723819"
+    [35mlength[39m: 33
+    [35mthreadId[39m: undefined
+[08:05:39.025] [31mERROR[39m (299174): [36mContainer exited with error[39m
+    [35mgroup[39m: "NanoClaw Group"
+    [35mcode[39m: 137
+    [35mduration[39m: 86775
+    [35mstderr[39m: "(node:31) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n(Use `node --trace-warnings ...` to show where the warning was created)\n[agent-runner] Received input for group: telegram_main\n[agent-runner] Starting query (session: baa1f594-5195-4e2c-86dd-8b60f6dff34c, resumeAt: latest)...\n[agent-runner] [msg #1] type=system/init\n[agent-runner] Session initialized: baa1f594-5195-4e2c-86dd-8b60f6dff34c\n[agent-runner] [msg #2] type=assistant\n[agent-runner] [msg #3] type=result\n[agent-runner] Result #1: subtype=success text=Hey! 👋 What can I help you with?\n"
+    [35mstdout[39m: "(node:7) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n(Use `node --trace-warnings ...` to show where the warning was created)\nnpm notice\nnpm notice New major version of npm available! 10.9.7 -> 11.12.1\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1\nnpm notice To update run: npm install -g npm@11.12.1\nnpm notice\n---NANOCLAW_OUTPUT_START---\n{\"status\":\"success\",\"result\":\"Hey! 👋 What can I help you with?\",\"newSessionId\":\"baa1f594-5195-4e2c-86dd-8b60f6dff34c\"}\n---NANOCLAW_OUTPUT_END---\n"
+    [35mlogFile[39m: "/root/nanoclaw/groups/telegram_main/logs/container-2026-03-28T08-05-39-025Z.log"
+[08:05:39.026] [31mERROR[39m (299174): [36mContainer agent error[39m
+    [35mgroup[39m: "NanoClaw Group"
+    [35merror[39m: "Container exited with code 137: lized: baa1f594-5195-4e2c-86dd-8b60f6dff34c\n[agent-runner] [msg #2] type=assistant\n[agent-runner] [msg #3] type=result\n[agent-runner] Result #1: subtype=success text=Hey! 👋 What can I help you with?\n"
+[08:05:39.026] [33mWARN[39m (299174): [36mAgent error after output was sent, skipping cursor rollback to prevent duplicates[39m
+    [35mgroup[39m: "NanoClaw Group"
+[08:06:16.370] [32mINFO[39m (299174): [36mShutdown signal received[39m
+    [35msignal[39m: "SIGTERM"
+[08:06:16.370] [32mINFO[39m (299174): [36mGroupQueue shutting down (containers detached, not killed)[39m
+    [35mactiveCount[39m: 0
+    [35mdetachedContainers[39m: []
+[08:06:16.371] [32mINFO[39m (299174): [36mTelegram bot stopped[39m
