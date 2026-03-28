@@ -710,6 +710,233 @@ describe('TelegramChannel', () => {
     });
   });
 
+  // --- Voice transcription ---
+
+  describe('voice transcription', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('transcribes voice message when OPENAI_API_KEY is set', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+              ok: true,
+              result: { file_path: 'voice/file.ogg' },
+            }),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            arrayBuffer: async () => new ArrayBuffer(8),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ text: 'Hello world' }),
+          }),
+      );
+
+      const opts = createTestOpts();
+      const channel = new TelegramChannel('test-token', opts, 'sk-test-key');
+      await channel.connect();
+
+      const ctx = createMediaCtx({
+        extra: { voice: { file_id: 'abc123', duration: 3 } },
+      });
+      await triggerMediaMessage('message:voice', ctx);
+
+      expect(opts.onMessage).toHaveBeenCalledWith(
+        'tg:100200300',
+        expect.objectContaining({ content: '[Voice]: Hello world' }),
+      );
+    });
+
+    it('appends caption to transcript when present', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+              ok: true,
+              result: { file_path: 'voice/file.ogg' },
+            }),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            arrayBuffer: async () => new ArrayBuffer(8),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ text: 'Transcript' }),
+          }),
+      );
+
+      const opts = createTestOpts();
+      const channel = new TelegramChannel('test-token', opts, 'sk-test-key');
+      await channel.connect();
+
+      const ctx = createMediaCtx({
+        caption: 'Note',
+        extra: { voice: { file_id: 'abc123' } },
+      });
+      await triggerMediaMessage('message:voice', ctx);
+
+      expect(opts.onMessage).toHaveBeenCalledWith(
+        'tg:100200300',
+        expect.objectContaining({ content: '[Voice]: Transcript Note' }),
+      );
+    });
+
+    it('falls back to placeholder when getFile fails', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValueOnce({ ok: false }),
+      );
+
+      const opts = createTestOpts();
+      const channel = new TelegramChannel('test-token', opts, 'sk-test-key');
+      await channel.connect();
+
+      const ctx = createMediaCtx({
+        extra: { voice: { file_id: 'abc123' } },
+      });
+      await triggerMediaMessage('message:voice', ctx);
+
+      expect(opts.onMessage).toHaveBeenCalledWith(
+        'tg:100200300',
+        expect.objectContaining({ content: '[Voice message]' }),
+      );
+    });
+
+    it('falls back to placeholder when Whisper API fails', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+              ok: true,
+              result: { file_path: 'voice/file.ogg' },
+            }),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            arrayBuffer: async () => new ArrayBuffer(8),
+          })
+          .mockResolvedValueOnce({ ok: false }),
+      );
+
+      const opts = createTestOpts();
+      const channel = new TelegramChannel('test-token', opts, 'sk-test-key');
+      await channel.connect();
+
+      const ctx = createMediaCtx({
+        extra: { voice: { file_id: 'abc123' } },
+      });
+      await triggerMediaMessage('message:voice', ctx);
+
+      expect(opts.onMessage).toHaveBeenCalledWith(
+        'tg:100200300',
+        expect.objectContaining({ content: '[Voice message]' }),
+      );
+    });
+
+    it('falls back to placeholder when fetch throws', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockRejectedValue(new Error('Network error')),
+      );
+
+      const opts = createTestOpts();
+      const channel = new TelegramChannel('test-token', opts, 'sk-test-key');
+      await channel.connect();
+
+      const ctx = createMediaCtx({
+        extra: { voice: { file_id: 'abc123' } },
+      });
+      await triggerMediaMessage('message:voice', ctx);
+
+      expect(opts.onMessage).toHaveBeenCalledWith(
+        'tg:100200300',
+        expect.objectContaining({ content: '[Voice message]' }),
+      );
+    });
+
+    it('falls back to placeholder when no OPENAI_API_KEY', async () => {
+      const fetchSpy = vi.fn();
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const opts = createTestOpts();
+      // No openaiApiKey passed
+      const channel = new TelegramChannel('test-token', opts);
+      await channel.connect();
+
+      const ctx = createMediaCtx({
+        extra: { voice: { file_id: 'abc123' } },
+      });
+      await triggerMediaMessage('message:voice', ctx);
+
+      expect(opts.onMessage).toHaveBeenCalledWith(
+        'tg:100200300',
+        expect.objectContaining({ content: '[Voice message]' }),
+      );
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('uses Telegram getFile and download URLs with correct bot token', async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            ok: true,
+            result: { file_path: 'voice/abc.ogg' },
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          arrayBuffer: async () => new ArrayBuffer(8),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ text: 'Test' }),
+        });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const opts = createTestOpts();
+      const channel = new TelegramChannel('my-bot-token', opts, 'sk-key');
+      await channel.connect();
+
+      const ctx = createMediaCtx({
+        extra: { voice: { file_id: 'file999' } },
+      });
+      await triggerMediaMessage('message:voice', ctx);
+
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        1,
+        'https://api.telegram.org/botmy-bot-token/getFile?file_id=file999',
+      );
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        2,
+        'https://api.telegram.org/file/botmy-bot-token/voice/abc.ogg',
+      );
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        3,
+        'https://api.openai.com/v1/audio/transcriptions',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { Authorization: 'Bearer sk-key' },
+        }),
+      );
+    });
+  });
+
   // --- sendMessage ---
 
   describe('sendMessage', () => {

@@ -41,16 +41,71 @@ async function sendTelegramMessage(
   }
 }
 
+/**
+ * Download a Telegram voice message and transcribe it via OpenAI Whisper.
+ * Returns the transcript text, or null if unavailable.
+ */
+async function transcribeVoice(
+  botToken: string,
+  fileId: string,
+  openaiApiKey: string,
+): Promise<string | null> {
+  // Resolve file path via Telegram API
+  const fileRes = await fetch(
+    `https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`,
+  );
+  if (!fileRes.ok) return null;
+  const fileData = (await fileRes.json()) as {
+    ok: boolean;
+    result?: { file_path?: string };
+  };
+  if (!fileData.ok || !fileData.result?.file_path) return null;
+
+  // Download the audio
+  const audioRes = await fetch(
+    `https://api.telegram.org/file/bot${botToken}/${fileData.result.file_path}`,
+  );
+  if (!audioRes.ok) return null;
+  const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
+
+  // Transcribe via OpenAI Whisper
+  const form = new FormData();
+  form.append(
+    'file',
+    new Blob([audioBuffer], { type: 'audio/ogg' }),
+    'voice.ogg',
+  );
+  form.append('model', 'whisper-1');
+
+  const transcribeRes = await fetch(
+    'https://api.openai.com/v1/audio/transcriptions',
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${openaiApiKey}` },
+      body: form,
+    },
+  );
+  if (!transcribeRes.ok) return null;
+  const result = (await transcribeRes.json()) as { text?: string };
+  return result.text || null;
+}
+
 export class TelegramChannel implements Channel {
   name = 'telegram';
 
   private bot: Bot | null = null;
   private opts: TelegramChannelOpts;
   private botToken: string;
+  private openaiApiKey: string | undefined;
 
-  constructor(botToken: string, opts: TelegramChannelOpts) {
+  constructor(
+    botToken: string,
+    opts: TelegramChannelOpts,
+    openaiApiKey?: string,
+  ) {
     this.botToken = botToken;
     this.opts = opts;
+    this.openaiApiKey = openaiApiKey;
   }
 
   async connect(): Promise<void> {
@@ -203,7 +258,23 @@ export class TelegramChannel implements Channel {
 
     this.bot.on('message:photo', (ctx) => storeNonText(ctx, '[Photo]'));
     this.bot.on('message:video', (ctx) => storeNonText(ctx, '[Video]'));
-    this.bot.on('message:voice', (ctx) => storeNonText(ctx, '[Voice message]'));
+    this.bot.on('message:voice', async (ctx) => {
+      let placeholder = '[Voice message]';
+      const fileId = ctx.message.voice?.file_id;
+      if (fileId && this.openaiApiKey) {
+        try {
+          const transcript = await transcribeVoice(
+            this.botToken,
+            fileId,
+            this.openaiApiKey,
+          );
+          if (transcript) placeholder = `[Voice]: ${transcript}`;
+        } catch (err) {
+          logger.debug({ err }, 'Voice transcription failed, using placeholder');
+        }
+      }
+      storeNonText(ctx, placeholder);
+    });
     this.bot.on('message:audio', (ctx) => storeNonText(ctx, '[Audio]'));
     this.bot.on('message:document', (ctx) => {
       const name = ctx.message.document?.file_name || 'file';
@@ -306,12 +377,19 @@ export class TelegramChannel implements Channel {
 }
 
 registerChannel('telegram', (opts: ChannelOpts) => {
-  const envVars = readEnvFile(['TELEGRAM_BOT_TOKEN']);
+  const envVars = readEnvFile(['TELEGRAM_BOT_TOKEN', 'OPENAI_API_KEY']);
   const token =
     process.env.TELEGRAM_BOT_TOKEN || envVars.TELEGRAM_BOT_TOKEN || '';
   if (!token) {
     logger.warn('Telegram: TELEGRAM_BOT_TOKEN not set');
     return null;
   }
-  return new TelegramChannel(token, opts);
+  const openaiApiKey =
+    process.env.OPENAI_API_KEY || envVars.OPENAI_API_KEY || undefined;
+  if (!openaiApiKey) {
+    logger.warn(
+      'Telegram: OPENAI_API_KEY not set — voice messages will not be transcribed',
+    );
+  }
+  return new TelegramChannel(token, opts, openaiApiKey);
 });
