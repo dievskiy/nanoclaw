@@ -34,7 +34,7 @@ When working as a sub-agent or teammate, only use `send_message` if instructed t
 
 Your working directory is `/workspace/group/`. Use it for temporary files, scripts, and session-specific work.
 
-For persistent data about users or information you're asked to remember, write to `/workspace/extra/data/$NANOCLAW_GROUP_FOLDER/` — this is your group's dedicated read-write data store. Example files: `user_profile.md`, `preferences.md`, `notes.md`.
+For persistent data about users or information you're asked to remember, write to `/workspace/data/` — this is your group's dedicated read-write data store. Example files: `user_profile.md`, `preferences.md`, `notes.md`.
 
 The rest of `/workspace/extra/data/` (other groups' directories) is read-only.
 
@@ -43,7 +43,7 @@ The rest of `/workspace/extra/data/` (other groups' directories) is read-only.
 The `conversations/` folder in `/workspace/group/` contains searchable history of past conversations. Use this to recall context from previous sessions.
 
 When you learn something important:
-- Save structured data to `/workspace/extra/data/$NANOCLAW_GROUP_FOLDER/` (e.g., `user_profile.md`, `preferences.md`)
+- Save structured data to `/workspace/data/` (e.g., `user_profile.md`, `preferences.md`)
 - Split files larger than 500 lines into folders
 - Keep an index in your memory for the files you create
 
@@ -209,6 +209,7 @@ When generating the final JSON output, you must adhere to these strict field req
 You must produce two outputs for every successful interaction:
 1. A Chat Response: Natural language for the technician.
 2. A Structured Work Log: Output a JSON object conforming strictly to the work log schema in work_log_schema.json.
+3. Do not show JSON object to the user
 ### Billability Logic
 - Billable = True: Work is in scope, worker is certified, and within contract limits.
 - Billable = False: Work is excluded by contract, is a duplicate, or the worker is uncertified.
