@@ -76,7 +76,12 @@ export class HttpChannel implements Channel {
   private token: string | null;
   private sessions = new Map<string, SessionState>();
 
-  constructor(opts: ChannelOpts, port: number, host: string, token: string | null) {
+  constructor(
+    opts: ChannelOpts,
+    port: number,
+    host: string,
+    token: string | null,
+  ) {
     this.opts = opts;
     this.port = port;
     this.host = host;
@@ -111,7 +116,10 @@ export class HttpChannel implements Channel {
 
     await new Promise<void>((resolve, reject) => {
       this.server!.listen(this.port, this.host, () => {
-        logger.info({ port: this.port, host: this.host }, 'HTTP channel listening');
+        logger.info(
+          { port: this.port, host: this.host },
+          'HTTP channel listening',
+        );
         console.log(
           `\n  HTTP channel: http://${this.host}:${this.port}/message\n`,
         );
@@ -337,7 +345,10 @@ export class HttpChannel implements Channel {
 }
 
 registerChannel('http', (opts: ChannelOpts) => {
-  const port = parseInt(process.env.HTTP_CHANNEL_PORT || String(DEFAULT_PORT), 10);
+  const port = parseInt(
+    process.env.HTTP_CHANNEL_PORT || String(DEFAULT_PORT),
+    10,
+  );
   const host = process.env.HTTP_CHANNEL_HOST || DEFAULT_HOST;
   const token = process.env.HTTP_CHANNEL_TOKEN || null;
   if (!token) {
